@@ -1,153 +1,118 @@
-# Day 1 — Interface Setup, Routing & Troubleshooting
+# Day 1 — pfSense setup and connectivity tests
 
-## Objective
+## What I was trying to do
 
-Create two separate IPv4 networks behind pfSense and verify that Kali and Ubuntu can communicate through the firewall. Record the troubleshooting process rather than only the final working state.
+I wanted to set up the pfSense interfaces and get Kali and Ubuntu talking to each other through the firewall.
 
-## 1. Environment
+## My setup
 
-- Hypervisor: Oracle VirtualBox
-- Firewall: pfSense
-- Test hosts: Kali Linux and Ubuntu
-- Windows host connectivity: not yet working; investigation remains open
+- VirtualBox
+- pfSense
+- Kali Linux
+- Ubuntu
+- Windows host (Windows-to-Kali test is still pending)
 
-### VirtualBox adapters reported
+### VirtualBox adapters I used
 
-| VM | Adapter | Mode / network label | Role |
+| VM | Adapter | Network | Why |
 |---|---|---|---|
-| pfSense | Adapter 1 | NAT | WAN/upstream |
-| pfSense | Adapter 2 | Internal Network — `int network` | LAN side |
-| pfSense | Adapter 3 | Internal Network — `attacker` | OPT1 / attacker side |
-| Kali | Adapter 1 | Internal Network — `attacker` | Connects to pfSense OPT1 |
+| pfSense | Adapter 1 | NAT | WAN |
+| pfSense | Adapter 2 | Internal Network: `int network` | LAN |
+| pfSense | Adapter 3 | Internal Network: `attacker` | OPT1 |
+| Kali | Adapter 1 | Internal Network: `attacker` | Connect to OPT1 |
 
-Confirm adapter mappings in the VM settings and pfSense console if the topology is changed.
+I should check these again if I change the VM settings.
 
-## 2. Sanitized addressing
+## IP address setup
 
-Actual IPv4 values have been replaced with placeholders for this public copy.
+I removed the real IP addresses from this public version. The values below are placeholders, so I need to replace them with my actual lab values before running a command.
 
-| Device / interface | IPv4 placeholder | Notes |
-|---|---|---|
-| pfSense OPT1 | `<OPT1_GATEWAY>/<PREFIX>` | Static IPv4; IPv6 set to None |
-| Kali `eth0` | `<KALI_IP>/<PREFIX>` | Configured manually for the lab |
-| Ubuntu | `<UBUNTU_IP>` | Ubuntu-side LAN |
-| pfSense LAN | `<LAN_GATEWAY>/<PREFIX>` | Verify in current UI before relying on it |
+| Device | Address |
+|---|---|
+| pfSense OPT1 | `<OPT1_GATEWAY>/<PREFIX>` |
+| Kali eth0 | `<KALI_IP>/<PREFIX>` |
+| Ubuntu | `<UBUNTU_IP>` |
+| pfSense LAN | `<LAN_GATEWAY>/<PREFIX>` |
 
-For the original lab, the prefix length was configured as `/24` on OPT1. In your own notes, record the subnet mask and address plan privately. Replace placeholders with your verified local values before running any command shown below.
+OPT1 was configured with a static IPv4 address. IPv6 was set to None for this interface.
 
-## 3. pfSense OPT1 configuration
+## What I did on Kali
 
-1. Open **Interfaces → Assignments**.
-2. Add the available port as an interface; pfSense then labels it OPT1.
-3. Open **Interfaces → OPT1**.
-4. Enable the interface.
-5. Set IPv4 Configuration Type to **Static IPv4**.
-6. Set the IPv4 address to your private `<OPT1_GATEWAY>/<PREFIX>` value.
-7. Set IPv6 Configuration Type to **None**.
-8. Leave the upstream gateway as **None**; OPT1 is an internal interface, not the WAN.
-9. Leave **Block private networks** and **Block bogon networks** unchecked for this internal lab interface.
-10. Save and apply changes.
-
-A DHCP warning appeared during apply. The changes were applied successfully. DHCP was not documented as configured for OPT1; Kali was assigned a static address.
-
-## 4. Kali IPv4 and route configuration
-
-Commands used during troubleshooting:
+First I checked the interface and route:
 
 ```bash
 ip -br addr
 ip -4 addr show dev eth0
+ip route
 ```
 
-These display interface state and IPv4 addresses. Review the output locally; redact actual addresses before sharing it publicly.
-
-A lab address was added to `eth0` with this command pattern:
+I added the lab address to eth0 using this pattern:
 
 ```bash
 sudo ip addr add <KALI_IP>/<PREFIX> dev eth0
 ```
 
-The old IPv4 address was then removed using its actual address (replace both placeholders with the exact old address and prefix):
-
-```bash
-sudo ip addr del <OLD_IP>/<PREFIX> dev eth0
-```
-
-The route table initially showed an old default gateway. The default route was changed using this pattern:
+I also changed the default route to use the pfSense OPT1 gateway:
 
 ```bash
 sudo ip route replace default via <OPT1_GATEWAY> dev eth0
 ip route
 ```
 
-The old default route was removed using its actual gateway:
+These commands change the current network settings and might not stay after reboot. Before removing an old address or route, I need to check the exact value first.
 
-```bash
-sudo ip route del default via <OLD_GATEWAY>
-```
+## The problem and what fixed it
 
-**Important:** These commands change runtime network settings and may not survive reboot. Removing the old address or route can interrupt existing connectivity. Confirm the actual address and route before running a delete command. Do not type the angle-bracket placeholders literally; substitute your verified lab values.
+At first, Kali could not ping the pfSense OPT1 gateway. I checked the OPT1 rules page and it was empty.
 
-## 5. Connectivity tests and findings
+For troubleshooting, I added a pass rule with:
+- Action: Pass
+- Source: Kali host
+- Destination: Any
 
-| Test | Result reported | What it tells us |
-|---|---|---|
-| Kali → pfSense OPT1 before rule | 100% packet loss | Gateway reachability failed from Kali initially |
-| pfSense Diagnostics → Ping, source OPT1, target Kali | 3 pings succeeded | pfSense could reach Kali in the reverse direction; this alone did not prove Kali-initiated traffic was allowed |
-| Kali → pfSense OPT1 after OPT1 pass rule | Successful | The rule change resolved the reported gateway ping issue |
-| Kali → Ubuntu LAN host | Successful | Inter-subnet connectivity worked after routing/rules were in place |
-| Ubuntu → Kali | Successful | Return-direction test also worked |
-| Windows → Kali | Not working / not yet diagnosed | Requires separate host/adapter/routing investigation |
+After applying the rule, Kali could ping the OPT1 gateway. I then tested Kali and Ubuntu in both directions, and those ping tests worked too.
 
-## 6. Firewall rule troubleshooting
+## Test results
 
-The **Firewall → Rules → OPT1** tab was empty. A rule was added with these reported settings:
-
-- Action: **Pass**
-- Source: **Single host or alias** → `<KALI_IP>`
-- Destination: **Any** (used for initial troubleshooting)
-
-After applying the rule, Kali could ping pfSense OPT1. Kali-to-Ubuntu and Ubuntu-to-Kali ping tests were then reported successful.
-
-### Security note
-
-The destination **Any** rule is broad. It was used as a troubleshooting step, not a final least-privilege design. For a hardened lab, replace it with rules that allow only required destinations/protocols (for example, ICMP to the gateway for a specific diagnostic test), enable logging while troubleshooting, and verify the resulting traffic in **Status → System Logs → Firewall**. Avoid leaving unnecessary broad rules enabled.
-
-## 7. Troubleshooting commands quick reference
-
-Replace placeholders with the verified values from your own lab before running commands.
-
-| Command | Purpose |
+| Test | Result |
 |---|---|
-| `ip -br addr` | Brief view of interfaces and addresses |
-| `ip -4 addr show dev eth0` | Inspect IPv4 addresses on Kali's eth0 |
-| `ip route` | Inspect routing table and default gateway |
-| `ping -c 4 <OPT1_GATEWAY>` | Test Kali → pfSense OPT1 |
-| `ping -c 4 <UBUNTU_IP>` | Test Kali → Ubuntu |
-| `sudo ip addr add <KALI_IP>/<PREFIX> dev eth0` | Add Kali's lab IPv4 address |
-| `sudo ip addr del <OLD_IP>/<PREFIX> dev eth0` | Remove a specific old address (substitute exact values) |
-| `sudo ip route replace default via <OPT1_GATEWAY> dev eth0` | Set Kali's default route via pfSense OPT1 |
-| `sudo ip route del default via <OLD_GATEWAY>` | Remove the old default route, if it exists |
+| Kali to pfSense OPT1 before the rule | Failed |
+| pfSense ping to Kali | Worked |
+| Kali to pfSense OPT1 after the rule | Worked |
+| Kali to Ubuntu | Worked |
+| Ubuntu to Kali | Worked |
+| Windows to Kali | Still not working |
 
-## 8. Day 1 outcome
+## Important thing to fix
 
-**Completed:** OPT1 assignment and static IPv4 configuration; Kali static IP and default route adjustment; an OPT1 pass rule; successful Kali ↔ pfSense, Kali ↔ Ubuntu, and Ubuntu ↔ Kali ping tests (as reported).
+The rule with destination set to `Any` is broad. I only used it to help troubleshoot. I should change it later so it allows only the traffic needed for a test, and check the firewall logs under **Status → System Logs → Firewall**.
 
-**Pending:** Windows-to-Kali connectivity; reviewing and tightening the temporary broad pass rule; collecting screenshots and firewall log evidence.
+## Commands I used
 
-## 9. Evidence to add
+| Command | What it shows/does |
+|---|---|
+| `ip -br addr` | Shows network interfaces and addresses |
+| `ip route` | Shows routes and default gateway |
+| `ping -c 4 <OPT1_GATEWAY>` | Tests Kali to the OPT1 gateway |
+| `ping -c 4 <UBUNTU_IP>` | Tests Kali to Ubuntu |
 
-Save sanitized screenshots under `docs/day-01/evidence/` (create the folder when adding images):
+Use the real lab values in place of placeholders before running these commands.
 
-- [ ] VirtualBox network adapters for pfSense and Kali
-- [ ] pfSense Interfaces → OPT1 configuration (redact addresses)
-- [ ] Kali interface and route output (redact addresses)
-- [ ] Firewall → Rules → OPT1
-- [ ] Successful ping output in both directions
-- [ ] Windows `ipconfig` and the exact failed ping result (hide unrelated/private details)
+## Day 1 status
 
-Do not claim a screenshot or log exists until it has been captured.
+The basic interface setup and Kali/Ubuntu ping tests are working based on the tests I ran. Windows-to-Kali still needs checking. I also need to make the temporary firewall rule more specific and add screenshots/logs once I capture them.
 
-## Public repository privacy
+## Screenshots to add later
 
-Private lab IPs have been replaced with placeholders in this document to reduce unnecessary exposure of internal topology. Do not publish public/WAN IP addresses, credentials, API keys, or screenshots containing identifying details. This edit does not remove previous values from Git history, forks, caches, or existing clones; if an actual public IP or secret was exposed, take appropriate additional remediation.
+- [ ] VirtualBox adapter settings
+- [ ] pfSense OPT1 settings
+- [ ] Kali IP and route output
+- [ ] OPT1 firewall rule
+- [ ] Ping test results
+- [ ] Windows-to-Kali test
+
+I have not added these screenshots yet. Before uploading, I need to hide IP addresses and other private details.
+
+## Privacy
+
+IP addresses are hidden in this public copy. This does not remove older values from Git history, forks or existing clones, so I should not upload any passwords, keys or private screenshots.
