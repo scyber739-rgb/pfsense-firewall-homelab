@@ -46,7 +46,8 @@ Actual lab IP addresses have been replaced with placeholders in this public repo
 
 ## Day 1
 
-See [Day 1 — Interface Setup, Routing & Troubleshooting](docs/day-01/README.md).
+- [Day 1 — Interface Setup, Routing & Troubleshooting](docs/day-01/README.md)
+- [Day 1 — Network Architecture Diagram](docs/day-01/network-architecture.md)
 
 ## Safety and scope
 
