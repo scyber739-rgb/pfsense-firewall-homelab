@@ -1,49 +1,41 @@
-# Day 1 — Network Architecture Diagram
+# Day 1 — Network diagram
 
-This diagram represents the **logical** pfSense lab topology based on the configuration and tests reported during Day 1. All IP addresses are intentionally replaced with placeholders for this public repository.
-
-## Logical topology
+This is the basic layout of my lab. I have hidden the IP addresses in this public version.
 
 ```mermaid
-flowchart LR
-    NET["Upstream network / VirtualBox NAT"]
-    subgraph FW["pfSense Firewall VM"]
-        WAN["WAN interface"]
-        LAN["LAN interface<br/>Gateway: <LAN_GATEWAY>/<PREFIX>"]
-        OPT["OPT1 interface<br/>Gateway: <OPT1_GATEWAY>/<PREFIX>"]
-    end
-    UB["Ubuntu test host<br/><UBUNTU_IP>"]
-    KA["Kali test host<br/>eth0: <KALI_IP>/<PREFIX>"]
+flowchart TD
+    NET["VirtualBox NAT"]
+    FW["pfSense firewall"]
+    LAN["LAN"]
+    OPT["OPT1"]
+    UB["Ubuntu"]
+    KA["Kali Linux"]
 
-    NET <--> WAN
-    LAN <--> UB
-    OPT <--> KA
-    UB <-->|"Routed traffic via pfSense"| FW
-    KA <-->|"Routed traffic via pfSense"| FW
+    NET <--> FW
+    FW --- LAN
+    FW --- OPT
+    LAN --- UB
+    OPT --- KA
 ```
 
-> The diagram is a logical overview, not a literal wiring diagram. Confirm VirtualBox adapter-to-interface mapping in the current VM settings before relying on it. The exact WAN address is intentionally not shown.
+## Adapter setup I used
 
-## Reported adapter mapping
+| VM | Adapter | Network |
+|---|---|---|
+| pfSense | Adapter 1 | NAT |
+| pfSense | Adapter 2 | Internal Network: `int network` |
+| pfSense | Adapter 3 | Internal Network: `attacker` |
+| Kali | Adapter 1 | Internal Network: `attacker` |
 
-| Virtual machine | Adapter | VirtualBox network | Intended role |
-|---|---|---|---|
-| pfSense | Adapter 1 | NAT | WAN / upstream |
-| pfSense | Adapter 2 | Internal Network — `int network` | LAN side |
-| pfSense | Adapter 3 | Internal Network — `attacker` | OPT1 / Kali side |
-| Kali | Adapter 1 | Internal Network — `attacker` | Connects to pfSense OPT1 |
-| Ubuntu | Not fully confirmed here | LAN-side network | Internal test host |
+I still need to double-check the adapter mapping if I change the setup. Ubuntu is connected to the LAN side in this layout.
 
-## Day 1 connectivity findings
+## Tests so far
 
-- Kali ↔ pfSense OPT1 ping: successful after adding an OPT1 pass rule.
-- Kali ↔ Ubuntu ping: reported successful.
-- Ubuntu ↔ Kali ping: reported successful.
-- Windows → Kali ping: still pending investigation.
+- Kali to pfSense OPT1: worked after I added a pass rule.
+- Kali to Ubuntu: worked.
+- Ubuntu to Kali: worked.
+- Windows to Kali: not working yet.
 
-## Security notes
+The OPT1 rule used during troubleshooting had destination set to `Any`. I need to tighten that rule later instead of leaving it broad.
 
-- Replace placeholders only in your private lab notes; do not publish actual public/WAN addresses.
-- The initial OPT1 rule used destination **Any** for troubleshooting. Review it and narrow permissions to the minimum required traffic.
-- Keep screenshots sanitized: hide IP details, usernames, hostnames, MAC addresses, and unrelated network information before committing them.
-- This diagram documents the reported topology; verify it against the current lab before presenting it as final evidence.
+This diagram is just a simple overview, not proof of the exact wiring. I will add screenshots after capturing them and hiding private details.
