@@ -1,17 +1,11 @@
 # pfSense Firewall Homelab
 
-This is my pfSense firewall lab that I am building in VirtualBox. I am using pfSense, Kali Linux and Ubuntu to learn firewall rules, routing and basic network troubleshooting.
+**Hands-on pfSense network security lab** | VirtualBox · pfSense CE/Plus · Kali Linux · Ubuntu · Windows host
 
-## What I want to learn
+## Project overview
+This repository documents a controlled VirtualBox homelab for learning firewall administration, packet flow, access-control rules, state tracking, aliases, NAT, logging and network segmentation. Each challenge separates what is configured, what was tested, what was actually observed and what still needs evidence.
 
-- Set up WAN, LAN and OPT1 in pfSense
-- Connect Kali and Ubuntu to different networks
-- Understand how traffic moves through the firewall
-- Test ping and check why traffic is blocked
-- Learn to write safer firewall rules
-
-## My lab setup
-
+## Lab architecture
 ```text
                  VirtualBox NAT
                        |
@@ -21,45 +15,52 @@ This is my pfSense firewall lab that I am building in VirtualBox. I am using pfS
                  |            |
               Ubuntu         Kali
 ```
+The diagram is a logical overview. Verify the actual VirtualBox adapters, pfSense interface assignments, routes and gateways before each test. Two VMs on the same Layer-2 network may communicate directly without their packets crossing pfSense.
 
-This is a simple view of the setup. The actual adapter names should be checked in VirtualBox and pfSense if I change anything.
-
-## IP address notes
-
-I have hidden the lab IP addresses in this public repo. Placeholders like `<KALI_IP>` and `<OPT1_GATEWAY>` are examples only. I need to replace them with the actual values from my own lab before running commands.
+## Lab devices
 
 | Device | Role |
 |---|---|
-| pfSense WAN | Connects to VirtualBox NAT |
-| pfSense LAN | Ubuntu side |
-| pfSense OPT1 | Kali side |
-| Ubuntu | Internal test machine |
-| Kali Linux | Test machine on OPT1 |
+| pfSense WAN | Outside connection through VirtualBox NAT |
+| pfSense LAN | Internal Ubuntu-side network |
+| pfSense OPT1 | Kali test network |
+| Ubuntu | Internal test server |
+| Kali Linux | Authorized test client |
+| Windows host | Additional connectivity test source; Windows-to-Kali test remains pending |
 
-## Day 1
+Public documentation uses placeholders such as `<KALI_IP>`, `<UBUNTU_IP>` and `<OPT1_GATEWAY>`. Replace them locally with current lab values before running commands.
 
-- [Day 1 notes](docs/day-01/README.md)
-- [Network diagram](docs/day-01/network-architecture.md)
+## Learning path
 
-## What worked so far
+| Day | Topic | pfSense lab status |
+|---|---|---|
+| 01 | Interface setup and basic connectivity | Interfaces and basic Kali/Ubuntu connectivity tested; evidence screenshots pending |
+| 02 | PASS/BLOCK rules, matching and rule order | Learning notes added; targeted rule-order validation pending |
+| 03 | TCP/UDP ports, HTTP testing and state tracking | Ping connectivity is reported; HTTP/TCP test and state evidence pending |
+| 04 | IP aliases and reusable firewall policies | Documentation added; alias configuration and validation in pfSense pending |
+| 05–15 | Segmentation, NAT, DHCP/DNS, logging, VPN, HA, IDS/IPS and capstone | Planned |
 
-- Kali could ping the pfSense OPT1 gateway after I added a firewall rule.
-- Kali and Ubuntu could ping each other.
-- Windows-to-Kali connectivity is still not working, so I need to troubleshoot it separately.
+## Documentation
 
-These results are based on the tests I ran/reported. I will add screenshots after I capture and clean them up.
+- [Day 1 — Setup and connectivity](docs/day-01/README.md)
+- [Day 1 — Network architecture](docs/day-01/network-architecture.md)
+- [Day 2 — Rule processing and order](docs/day-02/README.md)
+- [Day 3 — Protocol, port and stateful testing](docs/day-03/README.md)
+- [Day 4 — IP aliases](docs/day-04/README.md)
+- [Configuration register](docs/configuration/README.md)
 
-## Things I still need to do
+## pfSense dashboard paths used in this lab
 
-- [x] Set up the basic interfaces
-- [x] Test basic connectivity between Kali and Ubuntu
-- [ ] Check why Windows cannot reach Kali
-- [ ] Review the temporary OPT1 rule and make it more specific
-- [ ] Add screenshots and firewall log evidence
-- [ ] Continue with rule order, logging and NAT
+- Rules: **Firewall → Rules → [interface tab]**
+- Aliases: **Firewall → Aliases**
+- Firewall logs: **Status → System Logs → Firewall**
+- Active connections: **Diagnostics → States**
 
-## Safety notes
+## Evidence standard
+A rule being saved does not prove that it worked. For each test, record the exact client command/output, the matching pfSense log entry and (where useful) the active state. A timeout alone does not prove a firewall block. Do not use an ICMP log entry as proof that a TCP/80 request was blocked.
 
-I am using this setup for my own lab only. The OPT1 rule used during troubleshooting had destination set to `Any`, which is too broad to leave as a final rule. I need to limit it to only the traffic required for each test.
+## Safety and privacy
+Keep test services on isolated lab networks. Do not expose them to the public internet. Do not publish passwords, API keys, raw configuration exports or screenshots containing private details. Redact addresses and host identifiers before committing evidence.
 
-I have replaced IPs in these files, but that does not remove older values from Git history or existing clones. I should also avoid uploading passwords, API keys or screenshots with private network details.
+## Current next step
+Complete the Day 2 targeted rule-order test, then establish a successful HTTP baseline for Day 3 before applying a TCP/80 policy. Only mark a result verified after collecting the client output and corresponding pfSense log.
