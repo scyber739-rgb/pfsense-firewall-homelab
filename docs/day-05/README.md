@@ -46,7 +46,7 @@ Save the rule and apply changes. Check that the intended associated filter rule 
 The test was initiated from the authorized Kali lab client. The command reported during the test was:
 
 ```bash
-curl -v --connect-timeout 5 http://<PFSENSE_WAN_IP>:18/
+curl -v --connect-timeout 5 http://<PFSENSE_WAN_IP>:80/
 ```
 
 The captured output showed an HTTP connection and a **301 Moved Permanently** response. The Ubuntu terminal also showed a request arriving from the Kali test client.
