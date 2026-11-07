@@ -38,7 +38,7 @@ Public documentation uses placeholders such as `<KALI_IP>`, `<UBUNTU_IP>` and `<
 | 02 | PASS/BLOCK rules, matching and rule order | Learning notes added; targeted rule-order validation pending |
 | 03 | TCP/UDP ports, HTTP testing and state tracking | Ping connectivity is reported; HTTP/TCP test and state evidence pending |
 | 04 | IP aliases and reusable firewall policies | Documentation added; alias configuration and validation in pfSense pending |
-| 05–15 | Segmentation, NAT, DHCP/DNS, logging, VPN, HA, IDS/IPS and capstone | Planned |
+| 05 | NAT — WAN port forwarding to an Ubuntu test service | Initial test documented; external/target/listener port mapping needs confirmation |\n| 06–15 | Segmentation, outbound NAT, DHCP/DNS, logging, VPN, HA, IDS/IPS and capstone | Planned |
 
 ## Documentation
 
